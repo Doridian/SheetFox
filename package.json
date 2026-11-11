@@ -1,0 +1,37 @@
+{
+  "name": "sheetfox",
+  "version": "1.0.0",
+  "description": "Interactive datasheet player",
+  "scripts": {
+    "predev": "tsx ingest/build-index.ts",
+    "dev": "vite",
+    "prebuild": "tsx ingest/build-index.ts",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "ingest": "tsx ingest/ingest.ts",
+    "validate": "tsx ingest/validate.ts",
+    "typecheck": "tsc --noEmit",
+    "index": "tsx ingest/build-index.ts"
+  },
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "mathjs": "^15.2.0",
+    "plotly.js-dist-min": "^4.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/plotly.js": "^3.0.15",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "private": true
+}
