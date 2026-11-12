@@ -81,7 +81,7 @@ export function App(): JSX.Element {
     } else if (toIngest.length) {
       // Dropped datasheets go to the server; the ingest panel on the home page shows progress
       const started = await Promise.allSettled(
-        toIngest.map(async (f) => startIngest(f, { apiKey, effort: 'high', force: false })),
+        toIngest.map(async (f) => startIngest(f, { apiKey, effort: 'medium', force: false })),
       );
       for (const [i, r] of started.entries()) {
         if (r.status === 'rejected') setError(`${toIngest[i].name}: ${errorMessage(r.reason)}`);

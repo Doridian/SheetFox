@@ -56,13 +56,15 @@ npm run build                    # static viewer in dist/ (no sheets; npm run de
 
 Ingestion is keyed by the source file's SHA-256. Running it again on the same PDF is a no-op unless
 you pass `--force`, so you never pay twice for the same sheet. `--effort low|medium|high|xhigh|max`
-trades cost for thoroughness (default `high`). Set `SHEETFOX_MODEL` to use a different model.
+trades cost for thoroughness (default `medium`). Set `SHEETFOX_MODEL` to use a different model.
 
-How ingest works: the PDF is sent as a document block, and Claude returns JSON constrained to
-`SheetBody` (structured outputs). The shared engine in `src/engine.ts` then compiles and evaluates
+How ingest works: the PDF is sent as a document block, and Claude returns JSON matching
+`SheetBody`, whose JSON Schema is part of the system prompt (it is too large for grammar-constrained
+structured outputs), and zod checks the reply. The shared engine in `src/engine.ts` then compiles and evaluates
 every expression at the default operating point and checks ids, array lengths, log axes and
 fit-vs-data error. Any problems go back to Claude for up to two repair rounds. The PDF block is
-prompt-cached, so repair rounds are cheap.
+prompt-cached, so repair rounds are cheap. A reply that hits the model's 128k output-token limit is continued in
+up to three follow-up turns and joined (`SHEETFOX_MAX_OUTPUT_TOKENS` lowers the limit, to test this).
 
 In the viewer:
 

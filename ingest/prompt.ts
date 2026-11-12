@@ -56,3 +56,6 @@ export const userInstruction = (fileName: string): string =>
 
 export const repairInstruction = (issues: string): string =>
   `The SheetFox validator found these problems in your model:\n\n${issues}\n\nReturn the complete corrected JSON model (not a diff). Keep everything that was fine.`;
+
+export const continueInstruction =
+  'Your reply was cut off by the output limit. Continue the JSON from exactly the character where it stopped: no repetition, no preamble, no code fences. It will be appended to what you already wrote.';

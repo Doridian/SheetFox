@@ -25,7 +25,15 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { type Effort, ingest, isEffort, MAX_SOURCE_BYTES, MODEL, type SourceInput } from '../ingest/core';
+import {
+  DEFAULT_EFFORT,
+  type Effort,
+  ingest,
+  isEffort,
+  MAX_SOURCE_BYTES,
+  MODEL,
+  type SourceInput,
+} from '../ingest/core';
 import { buildIndex, findBySha, type IndexEntry, sha256 } from '../ingest/library';
 import { errorMessage } from '../src/engine';
 import type { SheetFile } from '../src/schema';
@@ -273,7 +281,7 @@ function serveFile(req: http.IncomingMessage, res: http.ServerResponse, urlPath:
 }
 
 async function handleIngest(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
-  const effortParam = url.searchParams.get('effort') ?? 'high';
+  const effortParam = url.searchParams.get('effort') ?? DEFAULT_EFFORT;
   if (!isEffort(effortParam)) {
     json(res, 400, { error: `bad effort ${effortParam}` });
     return;

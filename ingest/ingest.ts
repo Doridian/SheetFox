@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { type Effort, EFFORTS, formatIssues, ingest, isEffort, loadInput } from './core';
+import { DEFAULT_EFFORT, type Effort, EFFORTS, formatIssues, ingest, isEffort, loadInput } from './core';
 import { findBySha, LIBRARY_DIR, rebuildIndex, sha256 } from './library';
 
 interface Args {
@@ -23,7 +23,7 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { input: '', out: null, force: false, effort: 'high' };
+  const a: Args = { input: '', out: null, force: false, effort: DEFAULT_EFFORT };
   for (let i = 0; i < argv.length; i++) {
     const s = argv[i];
     switch (s) {
@@ -50,7 +50,7 @@ function parseArgs(argv: string[]): Args {
     }
   }
   if (!a.input) {
-    console.error('usage: npm run ingest -- <file.pdf|image|txt|url> [-o out.json] [--force] [--effort high]');
+    console.error('usage: npm run ingest -- <file.pdf|image|txt|url> [-o out.json] [--force] [--effort medium]');
     process.exit(2);
   }
   return a;

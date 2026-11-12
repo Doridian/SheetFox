@@ -10,3 +10,6 @@ library/
 result
 .eslintcache
 data
+
+# Local API key for testing
+.apikey

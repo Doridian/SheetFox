@@ -22,7 +22,7 @@ export function IngestPanel({
 }): JSX.Element {
   const [remember, setRemember] = useState(() => loadApiKey() !== '');
   const [jobs, setJobs] = useState<IngestJob[]>([]);
-  const [effort, setEffort] = useState('high');
+  const [effort, setEffort] = useState('medium');
   const [force, setForce] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export function IngestPanel({
       <p className="muted">
         Upload a PDF (or image / text). Claude converts it into a sheet on the server and adds it to the library for
         everyone; this takes a few minutes. It runs on your own Anthropic API key (typically a few dollars per datasheet
-        at high effort), and a file that is already in the library is not converted again.
+        at medium effort), and a file that is already in the library is not converted again.
       </p>
       <div className="ingest-row">
         <label className="ingest-key">

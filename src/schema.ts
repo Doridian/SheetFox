@@ -1,9 +1,10 @@
 /**
  * SheetFox data model.
  *
- * `SheetBody` is what Claude produces from a datasheet (it doubles as the
- * structured-output schema, so it obeys the API's JSON-schema subset: every
- * object is strict, no records/tuples, "optional" is expressed as nullable).
+ * `SheetBody` is what Claude produces from a datasheet. Its JSON Schema goes
+ * into the ingest system prompt (it is too large for grammar-constrained
+ * structured outputs). Every object is strict and "optional" is expressed as
+ * nullable, so the model always emits every key.
  *
  * `SheetFile` is the self-contained file the viewer loads, downloads and
  * uploads. Once a datasheet is ingested, the file is all you need: no further
