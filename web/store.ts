@@ -166,3 +166,79 @@ export function parseCell(text: string): Cell {
   const n = Number(t.replace(/^\+/, '').replaceAll(/[−–]/g, '-'));
   return Number.isFinite(n) ? n : t;
 }
+
+// ---------------------------------------------------------------- server ingest (sheetfox server only)
+
+const Me = z.object({ user: z.string().nullable() });
+export type Me = z.infer<typeof Me>;
+
+const IngestJob = z.object({
+  id: z.string(),
+  status: z.enum(['done', 'error', 'queued', 'running']),
+  fileName: z.string(),
+  user: z.string().nullable(),
+  effort: z.string(),
+  createdAt: z.string(),
+  log: z.array(z.string()),
+  receivedKiB: z.number(),
+  sheetId: z.string().nullable(),
+  error: z.string().nullable(),
+});
+export type IngestJob = z.infer<typeof IngestJob>;
+
+const IngestStart = z.union([z.object({ existing: z.string() }), z.object({ job: IngestJob })]);
+export type IngestStart = z.infer<typeof IngestStart>;
+
+const ApiError = z.object({ error: z.string() });
+
+async function apiJson<T>(res: Response, schema: z.ZodType<T>): Promise<T> {
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    /* not JSON */
+  }
+  if (!res.ok) {
+    const e = ApiError.safeParse(body);
+    throw new Error(e.success ? e.data.error : `${res.status} ${res.statusText}`);
+  }
+  return schema.parse(body);
+}
+
+/** null when served statically (no server API). */
+export async function fetchMe(): Promise<Me | null> {
+  try {
+    const res = await fetch('api/me', { cache: 'no-store' });
+    return res.headers.get('content-type')?.includes('json') ? await apiJson(res, Me) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function startIngest(
+  src: File | string,
+  opts: { apiKey: string; effort: string; force: boolean },
+): Promise<IngestStart> {
+  const q = new URLSearchParams({ effort: opts.effort });
+  if (opts.force) q.set('force', '1');
+  if (typeof src === 'string') q.set('url', src);
+  else q.set('name', src.name);
+  const res = await fetch(`api/ingest?${q}`, {
+    method: 'POST',
+    body: typeof src === 'string' ? null : src,
+    headers: { 'Content-Type': 'application/octet-stream', 'X-Anthropic-Api-Key': opts.apiKey },
+  });
+  return apiJson(res, IngestStart);
+}
+
+// The user's own Anthropic key; only kept in localStorage when they ask us to remember it
+const API_KEY = 'sheetfox:anthropic-api-key';
+export const loadApiKey = (): string => lsGet(API_KEY) ?? '';
+export function rememberApiKey(key: string | null): void {
+  if (key) lsSet(API_KEY, key);
+  else lsDel(API_KEY);
+}
+
+export async function listJobs(): Promise<IngestJob[]> {
+  return apiJson(await fetch('api/jobs', { cache: 'no-store' }), z.array(IngestJob));
+}

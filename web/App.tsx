@@ -1,8 +1,22 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../src/engine';
 import type { SheetFile } from '../src/schema';
+import { IngestPanel } from './components/Ingest';
 import { SheetView } from './components/SheetView';
-import { importSheet, type LibraryEntry, loadLibrary, loadSheet, parseSheetFile, removeUploaded } from './store';
+import {
+  fetchMe,
+  importSheet,
+  type LibraryEntry,
+  loadApiKey,
+  loadLibrary,
+  loadSheet,
+  type Me,
+  parseSheetFile,
+  removeUploaded,
+  startIngest,
+} from './store';
+
+const isSheetFile = (f: File): boolean => /json$/i.test(f.name) || f.type === 'application/json';
 
 const routeId = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
 
@@ -12,7 +26,12 @@ export function App(): JSX.Element {
   const [route, setRoute] = useState(routeId());
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
+  const [ingestKey, setIngestKey] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  const [apiKey, setApiKey] = useState(loadApiKey);
+  // Served by the SheetFox server (not plain static hosting): anyone can ingest with their own key
+  const canIngest = me !== null;
 
   const refresh = useCallback(async () => {
     setLibrary(await loadLibrary());
@@ -21,7 +40,13 @@ export function App(): JSX.Element {
     void (async () => {
       setLibrary(await loadLibrary());
     })();
+    void (async () => {
+      setMe(await fetchMe());
+    })();
   }, []);
+  const ingestDone = useCallback(() => {
+    void refresh();
+  }, [refresh]);
   useEffect(() => {
     const h = () => {
       setRoute(routeId());
@@ -49,15 +74,34 @@ export function App(): JSX.Element {
   const openFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     setError(null);
+    const toIngest = canIngest ? Array.from(files).filter((f) => !isSheetFile(f)) : [];
+    if (toIngest.length && !apiKey.trim()) {
+      setError('Enter your Anthropic API key in "Ingest a datasheet" first, then drop the file again.');
+      location.hash = '#/';
+    } else if (toIngest.length) {
+      // Dropped datasheets go to the server; the ingest panel on the home page shows progress
+      const started = await Promise.allSettled(
+        toIngest.map(async (f) => startIngest(f, { apiKey, effort: 'high', force: false })),
+      );
+      for (const [i, r] of started.entries()) {
+        if (r.status === 'rejected') setError(`${toIngest[i].name}: ${errorMessage(r.reason)}`);
+        else if ('existing' in r.value)
+          setError(`${toIngest[i].name} is already in the library as "${r.value.existing}"`);
+      }
+      setIngestKey((k) => k + 1);
+      location.hash = '#/';
+    }
     const parsed = await Promise.allSettled(
-      Array.from(files, async (f) => {
-        if (!/json$/i.test(f.name) && f.type !== 'application/json') {
-          throw new Error(
-            `${f.name}: SheetFox opens .sheet.json files. To convert a PDF, run: npm run ingest -- "${f.name}"`,
-          );
-        }
-        return parseSheetFile(await f.text());
-      }),
+      Array.from(files)
+        .filter((f) => !toIngest.includes(f))
+        .map(async (f) => {
+          if (!isSheetFile(f)) {
+            throw new Error(
+              `${f.name}: SheetFox opens .sheet.json files. To convert a PDF, run: npm run ingest -- "${f.name}"`,
+            );
+          }
+          return parseSheetFile(await f.text());
+        }),
     );
     let lastId: string | null = null;
     for (const result of parsed) {
@@ -86,6 +130,11 @@ export function App(): JSX.Element {
     content = (
       <Home
         library={library}
+        ingest={
+          canIngest ? (
+            <IngestPanel apiKey={apiKey} onApiKeyChange={setApiKey} refreshKey={ingestKey} onDone={ingestDone} />
+          ) : null
+        }
         onOpen={() => fileInput.current?.click()}
         onRemove={(id) => {
           removeUploaded(id);
@@ -157,17 +206,23 @@ export function App(): JSX.Element {
       )}
 
       {content}
-      {dragging && <div className="drop-hint">Drop a .sheet.json to open it</div>}
+      {dragging && (
+        <div className="drop-hint">
+          {canIngest ? 'Drop a .sheet.json to open it, or a datasheet to ingest it' : 'Drop a .sheet.json to open it'}
+        </div>
+      )}
     </div>
   );
 }
 
 function Home({
   library,
+  ingest,
   onOpen,
   onRemove,
 }: {
   library: LibraryEntry[];
+  ingest: JSX.Element | null;
   onOpen: () => void;
   onRemove: (id: string) => void;
 }): JSX.Element {
@@ -178,13 +233,20 @@ function Home({
         <p>
           Each sheet was converted once from its PDF into a self-contained <code>.sheet.json</code>. Enter your
           operating point and the calculators, digitized graphs and editable tables answer from it, with no AI calls.
-          Drop a <code>.sheet.json</code> anywhere to open it, or create one with{' '}
-          <code>npm run ingest -- datasheet.pdf</code>.
+          Drop a <code>.sheet.json</code> anywhere to open it
+          {ingest ? (
+            ', or ingest a new datasheet below.'
+          ) : (
+            <>
+              , or create one with <code>npm run ingest -- datasheet.pdf</code>.
+            </>
+          )}
         </p>
         <button className="btn primary" onClick={onOpen}>
           Open .sheet.json
         </button>
       </section>
+      {ingest}
       <div className="lib">
         {library.map((e) => (
           <a key={e.origin + e.id} className="card lib-item" href={`#/${encodeURIComponent(e.id)}`}>

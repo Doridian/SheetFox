@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-server
 .playwright-mcp
 
 # Datasheet PDFs are manufacturers' copyright: keep them local only.
@@ -10,3 +11,4 @@ library/**/*.[pP][dD][fF]
 library/index.json
 result
 .eslintcache
+data

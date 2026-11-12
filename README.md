@@ -67,12 +67,39 @@ In the viewer:
   (`userState`), so a colleague who opens it lands on the same operating point.
 - Inputs and edits are also remembered per sheet in browser storage.
 
+## Server (upload & ingest from the browser)
+
+`server/server.ts` serves the viewer plus a small ingest API, so datasheets can be uploaded (or given by URL) in the
+browser and converted on the server. It is **bring your own key**: each user enters their Anthropic API key in the
+viewer, it is sent with each ingest request and only kept in memory for that job (never stored, logged or shown in the
+job list). Finished sheets are stored in `$SHEETFOX_DATA_DIR/library/<id>/` and appear in the library for everyone, next
+to the bundled ones (a server sheet wins over a bundled one with the same id). Uploads are deduplicated by SHA-256 just
+like the CLI, so nobody pays twice for the same file.
+
+```sh
+npm run build && npm run server   # http://127.0.0.1:8080
+npm run build:server              # bundle into dist-server/server.mjs (only needs node)
+nix build .#sheetfox              # static site in share/sheetfox, bin/sheetfox-server
+```
+
+The server does no authentication itself; run it behind a proxy that does. If the proxy sets (and always overwrites)
+`X-Preferred-Username`, jobs show who started them.
+
+| Variable              | Default           |                                                    |
+| --------------------- | ----------------- | -------------------------------------------------- |
+| `SHEETFOX_LISTEN`     | `127.0.0.1:8080`  | listen address                                     |
+| `SHEETFOX_STATIC_DIR` | `dist`            | built viewer                                       |
+| `SHEETFOX_DATA_DIR`   | `data`            | writable state (ingested sheets and their sources) |
+| `SHEETFOX_MAX_JOBS`   | `3`               | ingest jobs running at once, across all users      |
+| `SHEETFOX_MODEL`      | `claude-opus-5-5` | model used for ingest                              |
+
 ## Layout
 
 ```
 src/schema.ts      data model (Zod) – the file format and Claude's output schema
 src/engine.ts      expression evaluation, interpolation, validation, formatting (browser + Node)
-ingest/            CLI: ingest.ts, prompt.ts, validate.ts, library.ts
+ingest/            CLI: ingest.ts, core.ts (shared pipeline), prompt.ts, validate.ts, library.ts
+server/            web server: static viewer + ingest API
 web/               React + Plotly viewer (Vite)
 library/           ingested sheets (<id>/sheet.json); index.json is generated
 datasheets/        your local source PDFs (gitignored)

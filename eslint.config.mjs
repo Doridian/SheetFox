@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
 /* eslint-disable */
 
 export default defineConfig(
-  { ignores: ['dist', 'downloads', 'eslint.config.mjs', 'ui'] },
+  { ignores: ['dist', 'dist-server', 'data', 'downloads', 'eslint.config.mjs', 'ui'] },
   js.configs.all,
   ...tseslint.configs.all,
   importX.flatConfigs.recommended,
@@ -282,12 +282,12 @@ export default defineConfig(
     },
   },
   {
-    // CLI scripts report progress on the console
-    files: ['ingest/**'],
+    // CLI scripts and the server report progress on the console
+    files: ['ingest/**', 'server/**'],
     rules: { 'no-console': 'off' },
   },
   {
-    files: ['vite.config.ts'],
+    files: ['vite.config.ts', 'vite.server.config.ts'],
     rules: { 'import-x/no-default-export': 'off' },
   },
 );
