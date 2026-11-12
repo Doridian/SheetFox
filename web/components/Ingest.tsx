@@ -22,7 +22,6 @@ export function IngestPanel({
 }): JSX.Element {
   const [remember, setRemember] = useState(() => loadApiKey() !== '');
   const [jobs, setJobs] = useState<IngestJob[]>([]);
-  const [url, setUrl] = useState('');
   const [effort, setEffort] = useState('high');
   const [force, setForce] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +71,7 @@ export function IngestPanel({
   }, [active, poll]);
 
   const submit = useCallback(
-    async (srcs: (File | string)[]) => {
+    async (srcs: File[]) => {
       setError(null);
       setNotice(null);
       for (const src of srcs) {
@@ -80,12 +79,10 @@ export function IngestPanel({
           // eslint-disable-next-line no-await-in-loop -- keep submission order = queue order
           const r = await startIngest(src, { apiKey, effort, force });
           if ('existing' in r) {
-            setNotice(
-              `${typeof src === 'string' ? src : src.name} is already in the library as "${r.existing}". Tick "re-run" to ingest it again.`,
-            );
+            setNotice(`${src.name} is already in the library as "${r.existing}". Tick "re-run" to ingest it again.`);
           }
         } catch (error_) {
-          setError(`${typeof src === 'string' ? src : src.name}: ${errorMessage(error_)}`);
+          setError(`${src.name}: ${errorMessage(error_)}`);
         }
       }
       await poll();
@@ -98,9 +95,9 @@ export function IngestPanel({
     <section className="card ingest">
       <h2>Ingest a datasheet</h2>
       <p className="muted">
-        Upload a PDF (or image / text) or paste a link. Claude converts it into a sheet on the server and adds it to the
-        library for everyone; this takes a few minutes. It runs on your own Anthropic API key (typically a few dollars
-        per datasheet at high effort), and a file that is already in the library is not converted again.
+        Upload a PDF (or image / text). Claude converts it into a sheet on the server and adds it to the library for
+        everyone; this takes a few minutes. It runs on your own Anthropic API key (typically a few dollars per datasheet
+        at high effort), and a file that is already in the library is not converted again.
       </p>
       <div className="ingest-row">
         <label className="ingest-key">
@@ -150,28 +147,6 @@ export function IngestPanel({
             void submit(files);
           }}
         />
-        <form
-          className="ingest-url"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const u = url.trim();
-            if (!u || !hasKey) return;
-            setUrl('');
-            void submit([u]);
-          }}
-        >
-          <input
-            type="url"
-            placeholder="https://…/datasheet.pdf"
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-            }}
-          />
-          <button className="btn" type="submit" disabled={!hasKey || !url.trim()}>
-            Ingest URL
-          </button>
-        </form>
       </div>
       <div className="ingest-row muted">
         <label>

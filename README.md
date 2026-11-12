@@ -6,10 +6,14 @@ or _"which PATABLE byte gives +10 dBm at 868 MHz, and what does TX draw?"_ from 
 further API calls.
 
 ```
- datasheet.pdf ──► npm run ingest ──► library/<id>/sheet.json ──► viewer (static, offline)
-   (or image,       Claude Opus 5.5      ▲ download / upload ▼
-    text, URL)      + validator/repair   └── your inputs & table edits travel with the file
+ datasheet.pdf ──► upload in the viewer ──► <data>/library/<id>/ ──► viewer
+   (or image,       or npm run ingest         sheet.json + the PDF     ▲ download / upload ▼
+    text, URL)      Claude Opus 5.5                                    └── your inputs & table edits travel with the file
+                    + validator/repair
 ```
+
+SheetFox ships with no sheets: the library is whatever has been ingested on your server (or, locally,
+with the CLI into `library/`).
 
 ## What a sheet contains
 
@@ -46,8 +50,8 @@ npm run ingest -- datasheets/part.pdf        # PDF → library/<id>/sheet.json (
 npm run ingest -- https://…/part.pdf         # URLs, images (.png/.jpg) and text/HTML work too
 npm run ingest -- part.pdf -o part.sheet.json   # write a standalone file instead
 npm run validate                 # check every library sheet, rebuild library/index.json
-npm run index                    # just rebuild library/index.json (dev/build do this automatically)
-npm run build                    # static site in dist/ (library included)
+npm run index                    # just rebuild library/index.json (dev does this automatically)
+npm run build                    # static viewer in dist/ (no sheets; npm run dev serves the local library/)
 ```
 
 Ingestion is keyed by the source file's SHA-256. Running it again on the same PDF is a no-op unless
@@ -69,12 +73,11 @@ In the viewer:
 
 ## Server (upload & ingest from the browser)
 
-`server/server.ts` serves the viewer plus a small ingest API, so datasheets can be uploaded (or given by URL) in the
-browser and converted on the server. It is **bring your own key**: each user enters their Anthropic API key in the
+`server/server.ts` serves the viewer plus a small ingest API, so datasheets can be uploaded in the browser and converted on the server. It is **bring your own key**: each user enters their Anthropic API key in the
 viewer, it is sent with each ingest request and only kept in memory for that job (never stored, logged or shown in the
-job list). Finished sheets are stored in `$SHEETFOX_DATA_DIR/library/<id>/` and appear in the library for everyone, next
-to the bundled ones (a server sheet wins over a bundled one with the same id). Uploads are deduplicated by SHA-256 just
-like the CLI, so nobody pays twice for the same file.
+job list). Each finished sheet is stored in `$SHEETFOX_DATA_DIR/library/<id>/` together with its source file and appears
+in the library for everyone. Uploads are deduplicated by SHA-256 just like the CLI, so nobody pays twice for the same
+file. Starting with an empty data dir gives an empty library.
 
 ```sh
 npm run build && npm run server   # http://127.0.0.1:8080
@@ -101,17 +104,16 @@ src/engine.ts      expression evaluation, interpolation, validation, formatting 
 ingest/            CLI: ingest.ts, core.ts (shared pipeline), prompt.ts, validate.ts, library.ts
 server/            web server: static viewer + ingest API
 web/               React + Plotly viewer (Vite)
-library/           ingested sheets (<id>/sheet.json); index.json is generated
+library/           local CLI output (<id>/sheet.json + source); gitignored, index.json is generated
 datasheets/        your local source PDFs (gitignored)
 ```
 
 ## Source PDFs
 
-Datasheets are the manufacturers' copyright, so PDFs are **not** in this repository (`datasheets/`
-and `library/**/*.pdf` are gitignored). Each sheet records where its PDF came from (`source.url`)
-and its SHA-256. In the viewer, "Source PDF" and the per-value page links open your local copy if
-`library/<id>/<fileName>` exists, and otherwise fall back to that URL. Drop the original PDF there
-(ingest does this for you) to get offline page links.
+The source file is stored next to the sheet it produced (`<id>/<fileName>` beside `<id>/sheet.json`), on the server
+and by the CLI. In the viewer, "Source" and the per-value page links open that copy; a sheet whose source is missing
+falls back to `source.url`. Each sheet also records the source's SHA-256. Datasheets are the manufacturers' copyright,
+so none are in this repository.
 
 ## Caveats
 
@@ -120,5 +122,5 @@ back to its PDF page. Verify anything safety-critical against the source.
 
 ## License
 
-SheetFox's code is licensed under the [GNU AGPL v3.0 or later](LICENSE). Bundled datasheet PDFs
-remain the property of their respective manufacturers.
+SheetFox's code is licensed under the [GNU AGPL v3.0 or later](LICENSE). Datasheets remain the property of their
+respective manufacturers.

@@ -247,6 +247,12 @@ function Home({
         </button>
       </section>
       {ingest}
+      {library.length === 0 && (
+        <p className="empty">
+          The library is empty.{' '}
+          {ingest ? 'Ingest a datasheet above to add the first sheet.' : 'Open a .sheet.json to get started.'}
+        </p>
+      )}
       <div className="lib">
         {library.map((e) => (
           <a key={e.origin + e.id} className="card lib-item" href={`#/${encodeURIComponent(e.id)}`}>

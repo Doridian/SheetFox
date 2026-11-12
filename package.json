@@ -5,7 +5,6 @@
   "scripts": {
     "predev": "tsx ingest/build-index.ts",
     "dev": "vite",
-    "prebuild": "tsx ingest/build-index.ts",
     "build": "npm run typecheck && vite build",
     "build:server": "vite build -c vite.server.config.ts",
     "preview": "vite preview",

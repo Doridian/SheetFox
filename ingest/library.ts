@@ -66,6 +66,7 @@ export function buildIndex(libraryDir = LIBRARY_DIR): IndexEntry[] {
 
 export function rebuildIndex(libraryDir = LIBRARY_DIR): IndexEntry[] {
   const entries = buildIndex(libraryDir);
+  fs.mkdirSync(libraryDir, { recursive: true });
   fs.writeFileSync(path.join(libraryDir, 'index.json'), `${JSON.stringify(entries, null, 2)}\n`);
   return entries;
 }

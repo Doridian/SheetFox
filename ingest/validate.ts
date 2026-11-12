@@ -6,12 +6,15 @@ import { SheetFile } from '../src/schema';
 import { LIBRARY_DIR, rebuildIndex } from './library';
 
 const files = process.argv.slice(2);
-const targets = files.length
-  ? files
-  : fs
-      .readdirSync(LIBRARY_DIR, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && fs.existsSync(path.join(LIBRARY_DIR, d.name, 'sheet.json')))
-      .map((d) => path.join(LIBRARY_DIR, d.name, 'sheet.json'));
+function librarySheets(): string[] {
+  return fs.existsSync(LIBRARY_DIR)
+    ? fs
+        .readdirSync(LIBRARY_DIR, { withFileTypes: true })
+        .filter((d) => d.isDirectory() && fs.existsSync(path.join(LIBRARY_DIR, d.name, 'sheet.json')))
+        .map((d) => path.join(LIBRARY_DIR, d.name, 'sheet.json'))
+    : [];
+}
+const targets = files.length ? files : librarySheets();
 
 let failed = false;
 for (const f of targets) {

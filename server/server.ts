@@ -7,11 +7,11 @@
  * The server does no authentication; run it behind a proxy that does. If the proxy sets X-Preferred-Username (and always overwrites it), jobs show who started them.
  *
  *   GET  /api/me             -> { user }
- *   POST /api/ingest         body = file bytes, ?name=<fileName>  (or ?url=<http(s) url>, empty body)
+ *   POST /api/ingest         body = file bytes, ?name=<fileName>
  *                            &effort=<low..max>&force=1 -> 202 { job } | 200 { existing }
  *   GET  /api/jobs           -> Job[] (newest first)
  *   GET  /api/jobs/<id>      -> Job
- *   GET  /index.json         bundled library + server library, server wins on equal ids
+ *   GET  /index.json         the library: every sheet ingested on this server
  *   GET  /<id>/<file>        server library first, then the static build
  *
  * Environment:
@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { type Effort, ingest, isEffort, loadInput, MAX_SOURCE_BYTES, MODEL, type SourceInput } from '../ingest/core';
+import { type Effort, ingest, isEffort, MAX_SOURCE_BYTES, MODEL, type SourceInput } from '../ingest/core';
 import { buildIndex, findBySha, type IndexEntry, sha256 } from '../ingest/library';
 import { errorMessage } from '../src/engine';
 import type { SheetFile } from '../src/schema';
@@ -55,32 +55,36 @@ class HttpError extends Error {
 
 // ---------------------------------------------------------------- library
 
-// The static build is immutable: index the sheets bundled into it once
-const BUNDLED: IndexEntry[] = buildIndex(STATIC_DIR);
-
-function mergedIndex(): IndexEntry[] {
-  const server = buildIndex(DATA_LIBRARY);
-  const ids = new Set(server.map((e) => e.id));
-  return [...server, ...BUNDLED.filter((e) => !ids.has(e.id))].toSorted((a, b) => a.title.localeCompare(b.title));
-}
-
-function findExisting(hash: string): string | null {
-  const own = findBySha(hash, DATA_LIBRARY);
-  return own ? own.file.sheet.meta.id : (BUNDLED.find((e) => e.sha256 === hash)?.id ?? null);
-}
+// The library is only what was ingested here; the static build ships no sheets.
+const libraryIndex = (): IndexEntry[] => buildIndex(DATA_LIBRARY);
+const findExisting = (hash: string): string | null => findBySha(hash, DATA_LIBRARY)?.file.sheet.meta.id ?? null;
 
 const safeId = (id: string): string =>
   id
     .toLowerCase()
     .replaceAll(/[^a-z0-9_]+/g, '-')
     .replaceAll(/^-+|-+$/g, '') || 'sheet';
-const safeFileName = (name: string): string => path.basename(name).replaceAll(/[^\w.+-]+/g, '_') || 'datasheet';
+/**
+ * The source is stored next to its sheet and linked from the viewer ("Source", per-value page links), which only
+ * treats it as a PDF by extension: URLs like /download?id=5 still need to end up as a .pdf file.
+ */
+function sourceFileName(name: string, buf: Buffer): string {
+  const base =
+    path
+      .basename(name)
+      .replaceAll(/[^\w.+-]+/g, '_')
+      .replace(/^\.+/, '') || 'datasheet';
+  const isPdf = buf.subarray(0, 4).toString() === '%PDF';
+  const name2 = isPdf && !/\.pdf$/i.test(base) ? `${base}.pdf` : base;
+  // never clobber the sheet itself
+  return name2 === 'sheet.json' ? `source-${name2}` : name2;
+}
 
 /** Write a sheet (and its source) into the server library atomically. */
 function store(src: SourceInput, sheet: SheetFile): string {
   const id = safeId(sheet.sheet.meta.id);
   sheet.sheet.meta.id = id;
-  const fileName = safeFileName(src.fileName);
+  const fileName = sourceFileName(src.fileName, src.buf);
   sheet.source.fileName = fileName;
   const tmp = fs.mkdtempSync(path.join(DATA_LIBRARY, '.tmp-'));
   fs.writeFileSync(path.join(tmp, fileName), src.buf);
@@ -134,12 +138,8 @@ function release(): void {
   }
 }
 
-type Source = SourceInput | (() => Promise<SourceInput>);
-
-async function runJob(job: Job, source: Source, client: Anthropic): Promise<Partial<Job>> {
+async function runJob(job: Job, src: SourceInput, client: Anthropic): Promise<Partial<Job>> {
   try {
-    const src = typeof source === 'function' ? await source() : source;
-    job.fileName = src.fileName;
     const { file, issues } = await ingest(src, {
       client,
       effort: job.effort,
@@ -162,7 +162,7 @@ async function runJob(job: Job, source: Source, client: Anthropic): Promise<Part
   }
 }
 
-function addJob(job: Job, source: Source, client: Anthropic): void {
+function addJob(job: Job, src: SourceInput, client: Anthropic): void {
   jobs.set(job.id, job);
   for (const id of jobs.keys()) {
     if (jobs.size <= KEEP_JOBS) break;
@@ -172,7 +172,7 @@ function addJob(job: Job, source: Source, client: Anthropic): void {
     await acquire();
     try {
       job.status = 'running';
-      Object.assign(job, await runJob(job, source, client));
+      Object.assign(job, await runJob(job, src, client));
     } finally {
       release();
     }
@@ -279,7 +279,6 @@ async function handleIngest(req: http.IncomingMessage, res: http.ServerResponse,
     return;
   }
   const force = url.searchParams.get('force') === '1';
-  const srcUrl = url.searchParams.get('url');
 
   const now = new Date();
   const job: Job = {
@@ -295,31 +294,9 @@ async function handleIngest(req: http.IncomingMessage, res: http.ServerResponse,
     error: null,
   };
 
-  if (srcUrl) {
-    if (!/^https?:\/\//.test(srcUrl)) {
-      json(res, 400, { error: 'url must be http(s)' });
-      return;
-    }
-    const client = await clientFor(req);
-    job.fileName = srcUrl;
-    addJob(
-      job,
-      async () => {
-        const src = await loadInput(srcUrl);
-        if (src.buf.length > MAX_SOURCE_BYTES) throw new Error('download larger than 30 MiB');
-        const existing = force ? null : findExisting(sha256(src.buf));
-        if (existing) throw new Error(`already ingested as ${existing} (use force to re-run)`);
-        return src;
-      },
-      client,
-    );
-    json(res, 202, { job });
-    return;
-  }
-
   const name = url.searchParams.get('name');
   if (!name) {
-    json(res, 400, { error: 'missing ?name= or ?url=' });
+    json(res, 400, { error: 'missing ?name=' });
     return;
   }
   const buf = await readBody(req, MAX_SOURCE_BYTES);
@@ -365,7 +342,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     return;
   }
   if (p === '/index.json') {
-    json(res, 200, mergedIndex());
+    json(res, 200, libraryIndex());
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') {

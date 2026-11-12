@@ -216,16 +216,15 @@ export async function fetchMe(): Promise<Me | null> {
 }
 
 export async function startIngest(
-  src: File | string,
+  src: File,
   opts: { apiKey: string; effort: string; force: boolean },
 ): Promise<IngestStart> {
   const q = new URLSearchParams({ effort: opts.effort });
   if (opts.force) q.set('force', '1');
-  if (typeof src === 'string') q.set('url', src);
-  else q.set('name', src.name);
+  q.set('name', src.name);
   const res = await fetch(`api/ingest?${q}`, {
     method: 'POST',
-    body: typeof src === 'string' ? null : src,
+    body: src,
     headers: { 'Content-Type': 'application/octet-stream', 'X-Anthropic-Api-Key': opts.apiKey },
   });
   return apiJson(res, IngestStart);

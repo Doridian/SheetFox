@@ -709,16 +709,6 @@ table.specs tr.absmax td:first-child {
   margin-bottom: 10px;
   font-size: 13px;
 }
-.ingest-url {
-  display: flex;
-  gap: 8px;
-  flex: 1 1 280px;
-  min-width: 0;
-}
-.ingest-url input {
-  flex: 1;
-  min-width: 0;
-}
 .ingest .error-banner {
   margin: 8px 0 0;
 }
