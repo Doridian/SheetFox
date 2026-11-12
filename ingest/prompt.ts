@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/no-incorrect-template-string-interpolation -- {expression} is SheetFox message placeholder syntax, not JS interpolation */
 export const SYSTEM_PROMPT = `You convert electronic/optical/RF component datasheets into an interactive, computable model for an app called SheetFox.
 
 Engineers will use your output instead of the PDF. They pick an operating point ("I run this LDO from 5 V, what's the max load current?", "I set PATABLE=0xC0 at 868 MHz, how much current will TX draw?") and the app answers from your model. So the job is not to summarize – it is to turn static tables, graphs and prose into numbers, interpolatable curves and formulas, faithfully.
@@ -48,8 +49,10 @@ Engineers will use your output instead of the PDF. They pick an operating point 
 - Prefer the datasheet's own equations. Where you derive physics yourself, say so in the output description.
 - Every calculator output must evaluate to a finite number at the variables' default values unless the default is genuinely outside the data.`;
 
-export const USER_INSTRUCTION = (fileName: string) =>
+/* eslint-enable unicorn/no-incorrect-template-string-interpolation */
+
+export const userInstruction = (fileName: string): string =>
   `Convert this datasheet (${fileName}) into a SheetFox model. Cover all characteristic graphs, the key tables, and the calculators a designer would want. Output only the JSON object.`;
 
-export const REPAIR_INSTRUCTION = (issues: string) =>
+export const repairInstruction = (issues: string): string =>
   `The SheetFox validator found these problems in your model:\n\n${issues}\n\nReturn the complete corrected JSON model (not a diff). Keep everything that was fine.`;

@@ -1,11 +1,11 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // The viewer is fully static: library/ (sheet files + source PDFs) is served as public assets.
 export default defineConfig({
-  root: "web",
-  publicDir: "../library",
-  base: "./",
+  root: 'web',
+  publicDir: '../library',
+  base: './',
   plugins: [react()],
-  build: { outDir: "../dist", emptyOutDir: true, chunkSizeWarningLimit: 6000 },
+  build: { outDir: '../dist', emptyOutDir: true, chunkSizeWarningLimit: 6000 },
 });

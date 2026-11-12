@@ -1,8 +1,8 @@
 # SheetFox
 
 An interactive datasheet player. Datasheets are converted **once** by Claude into a self-contained
-`.sheet.json`. From then on the viewer answers questions like *"at 5 V in, what's the max current?"*
-or *"which PATABLE byte gives +10 dBm at 868 MHz, and what does TX draw?"* from that file alone, with no
+`.sheet.json`. From then on the viewer answers questions like _"at 5 V in, what's the max current?"_
+or _"which PATABLE byte gives +10 dBm at 868 MHz, and what does TX draw?"_ from that file alone, with no
 further API calls.
 
 ```
@@ -13,27 +13,27 @@ further API calls.
 
 ## What a sheet contains
 
-| Part | What it is | In the viewer |
-|---|---|---|
-| `variables` | The knobs: supply, temperature, current, band, register fields… | Sidebar inputs with sliders (log-aware) and dropdowns |
-| `calculators` | [mathjs](https://mathjs.org) expressions over variables, other outputs, specs, curves and tables | Live result cards (*show formulas* reveals the math) |
-| `checks` | Boolean expressions such as "V_CE > V_CEO" or "outside characterized range"; messages can embed `{expr}` values | Error/warning/info banners |
-| `curves` | Digitized graphs; families carry a numeric `param` (temperature, V_GS, pulse width…), plus an optional closed-form `fit` | Plotly charts with an operating-point cursor |
-| `patterns` | Antenna radiation patterns (gain vs angle) | Polar plots |
-| `tables` | Datasheet tables with optional computed columns (`row.<col>`) | Editable: change a cell and every dependent calculator updates |
-| `parameters` | Every min/typ/max spec with conditions and page number | Searchable spec list linking to the PDF page |
+| Part          | What it is                                                                                                               | In the viewer                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `variables`   | The knobs: supply, temperature, current, band, register fields…                                                          | Sidebar inputs with sliders (log-aware) and dropdowns          |
+| `calculators` | [mathjs](https://mathjs.org) expressions over variables, other outputs, specs, curves and tables                         | Live result cards (_show formulas_ reveals the math)           |
+| `checks`      | Boolean expressions such as "V_CE > V_CEO" or "outside characterized range"; messages can embed `{expr}` values          | Error/warning/info banners                                     |
+| `curves`      | Digitized graphs; families carry a numeric `param` (temperature, V_GS, pulse width…), plus an optional closed-form `fit` | Plotly charts with an operating-point cursor                   |
+| `patterns`    | Antenna radiation patterns (gain vs angle)                                                                               | Polar plots                                                    |
+| `tables`      | Datasheet tables with optional computed columns (`row.<col>`)                                                            | Editable: change a cell and every dependent calculator updates |
+| `parameters`  | Every min/typ/max spec with conditions and page number                                                                   | Searchable spec list linking to the PDF page                   |
 
 Functions available in expressions:
 
-| Function | What it does |
-|---|---|
-| `curve(id, x[, p])` | Interpolates a curve (log-aware). For families, `p` blends between neighbouring series. Returns NaN outside the data, so nothing is silently extrapolated. |
-| `curvefit(id, x[, p])` | Evaluates the curve's fitted formula |
-| `tlookup(table, keyCol, key, valCol)` | Interpolated lookup in a table |
-| `tindex(table, keyCol, key, valCol)` | Nearest-row lookup in a table |
-| `pattern(id, series, angle)` | Gain from a radiation pattern at an angle |
-| `patternmax(id, series)`, `patternavg(id, series)` | Peak / power-averaged gain of a pattern cut |
-| `dbm2w`, `w2dbm`, `db2lin`, `lin2db`, `clamp`, `between` | Unit conversion and range helpers |
+| Function                                                 | What it does                                                                                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `curve(id, x[, p])`                                      | Interpolates a curve (log-aware). For families, `p` blends between neighbouring series. Returns NaN outside the data, so nothing is silently extrapolated. |
+| `curvefit(id, x[, p])`                                   | Evaluates the curve's fitted formula                                                                                                                       |
+| `tlookup(table, keyCol, key, valCol)`                    | Interpolated lookup in a table                                                                                                                             |
+| `tindex(table, keyCol, key, valCol)`                     | Nearest-row lookup in a table                                                                                                                              |
+| `pattern(id, series, angle)`                             | Gain from a radiation pattern at an angle                                                                                                                  |
+| `patternmax(id, series)`, `patternavg(id, series)`       | Peak / power-averaged gain of a pattern cut                                                                                                                |
+| `dbm2w`, `w2dbm`, `db2lin`, `lin2db`, `clamp`, `between` | Unit conversion and range helpers                                                                                                                          |
 
 Specs are referenced as `spec.<id>.min|typ|max`.
 
@@ -61,8 +61,9 @@ fit-vs-data error. Any problems go back to Claude for up to two repair rounds. T
 prompt-cached, so repair rounds are cheap.
 
 In the viewer:
+
 - **Open .sheet.json** (or drag-and-drop anywhere) imports a sheet into this browser.
-- **Download .sheet.json** exports the sheet *including* your current inputs and table edits
+- **Download .sheet.json** exports the sheet _including_ your current inputs and table edits
   (`userState`), so a colleague who opens it lands on the same operating point.
 - Inputs and edits are also remembered per sheet in browser storage.
 
