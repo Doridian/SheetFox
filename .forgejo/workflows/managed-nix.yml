@@ -1,0 +1,22 @@
+name: Nix check
+
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-nix:
+    runs-on: ${{ vars.MANAGED_RUNNER_TAG || 'ubuntu-26.04' }}
+    env:
+      # Nix and its substituters come pre-configured in the runner image
+      NIX_CONFIG: access-tokens = github.com=${{ secrets.EXT_GITHUB_TOKEN }}
+    steps:
+      - uses: https://data.forgejo.org/actions/checkout@v7
+      - run: nix registry add nixpkgs github:NixOS/nixpkgs/nixos-unstable
+      - name: Lint nix
+        run: nix run --inputs-from . 'nixpkgs#nixfmt-tree' -- --ci --excludes 'gen-*.nix'
+      - name: Build nix
+        run: nix build '${{ vars.NIX_PACKAGE || '.' }}'
