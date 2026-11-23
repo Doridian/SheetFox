@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'dist-server',
     emptyOutDir: true,
     target: 'node22',
-    rollupOptions: { output: { entryFileNames: 'server.mjs' } },
+    rolldownOptions: { output: { entryFileNames: 'server.mjs' } },
   },
   ssr: { noExternal: true, target: 'node' },
 });
